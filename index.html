@@ -969,7 +969,7 @@ function buildResumen(d) {
   </div>
   <div class="charts2">
     <div class="chart-card"><div class="chart-ttl"><span class="chart-n">3</span>Distribución (${d.totalMat} matriculados)</div><div style="height:190px"><canvas id="chart3"></canvas></div></div>
-    <div class="chart-card"><div class="chart-ttl"><span class="chart-n">4</span>Top creativos · <span style="color:var(--green)">verde</span>=matriculados</div><div style="height:190px"><canvas id="chart4"></canvas></div></div>
+    <div class="chart-card"><div class="chart-ttl"><span class="chart-n">4</span>Top creativos · <span style="color:var(--green)">verde</span>=matriculados · hover=nombre técnico</div><div style="height:240px"><canvas id="chart4"></canvas></div></div>
   </div>
   <div class="insights" id="ins-inner">${buildInsights()}</div>`;
 }
@@ -1167,11 +1167,51 @@ function buildC4() {
   const el=document.getElementById('chart4'); if(!el)return;
   if(S.charts.c4){S.charts.c4.destroy();S.charts.c4=null;}
   const fc=filtered();
-  const sorted=(S.prog==='todos'?fc.slice().sort((a,b)=>b.leads-a.leads).slice(0,10):fc.filter(c=>c.prog===S.prog).sort((a,b)=>b.leads-a.leads).slice(0,8));
-  const labels=sorted.map(c=>c.ad.replace(/MASTER_|DIPLOMADO_/g,'').replace(/_/g,' ').slice(0,22));
-  const leads=sorted.map(c=>c.leads);
-  const bg=sorted.map(c=>c.matriculados>0?'rgba(15,110,86,.55)':c.status==='bad'?'rgba(214,59,47,.45)':'rgba(25,69,226,.4)');
-  S.charts.c4=new Chart(el,{type:'bar',data:{labels,datasets:[{data:leads,backgroundColor:bg,borderRadius:3}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{afterBody:(items)=>{const c=sorted[items[0].dataIndex];return['CPL: $'+c.cpl_usd.toFixed(2)+' USD','Matriculados: '+c.matriculados,'Conv: '+c.conv.toFixed(2)+'%'];}}}},scales:{x:{beginAtZero:true,grid:GR,ticks:{color:TC,font:{size:10}}},y:{grid:{display:false},ticks:{color:TC,font:{size:9}}}}}});
+  const sorted=(S.prog==='todos'
+    ? fc.slice().sort((a,b)=>b.leads-a.leads).slice(0,10)
+    : fc.filter(c=>c.prog===S.prog).sort((a,b)=>b.leads-a.leads).slice(0,8));
+
+  // Etiquetas legibles: "Programa · Perfil" — desduplicar si hay varios creativos del mismo tipo
+  const baseLabel = c => pi(c.prog).label + ' · ' + c.perf;
+  const count = {};
+  sorted.forEach(c => { const b=baseLabel(c); count[b]=(count[b]||0)+1; });
+  const seen  = {};
+  const labels = sorted.map(c => {
+    const b = baseLabel(c);
+    if (count[b] > 1) { seen[b]=(seen[b]||0)+1; return b+' ('+seen[b]+')'; }
+    return b;
+  });
+
+  const leads = sorted.map(c=>c.leads);
+  const bg    = sorted.map(c => {
+    const inf = pi(c.prog);
+    if (c.matriculados>0)      return 'rgba(15,110,86,.65)';
+    if (c.status==='bad')      return 'rgba(214,59,47,.5)';
+    // Tinte del color del programa para el resto
+    return inf.color ? inf.color+'88' : 'rgba(25,69,226,.42)';
+  });
+
+  S.charts.c4 = new Chart(el, {
+    type:'bar',
+    data:{labels, datasets:[{data:leads, backgroundColor:bg, borderRadius:4}]},
+    options:{indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{
+          title:(items) => [sorted[items[0].dataIndex].ad],   // nombre técnico en tooltip
+          afterBody:(items) => {
+            const c=sorted[items[0].dataIndex];
+            const sc=STATUS[c.status]||STATUS.warn;
+            return [sc.lbl,'CPL: $'+c.cpl_usd.toFixed(2)+' USD','Leads: '+c.leads,'Avanzados: '+c.avanzados,'Matriculados: '+c.matriculados,'Conv: '+c.conv.toFixed(2)+'%'];
+          }
+        }}
+      },
+      scales:{
+        x:{beginAtZero:true, grid:GR, ticks:{color:TC, font:{size:10}}},
+        y:{grid:{display:false}, ticks:{color:TC, font:{size:10}, crossAlign:'far'}}
+      }
+    }
+  });
 }
 
 // ── ADSET HELPERS & CHARTS ───────────────────────────────────────────────
