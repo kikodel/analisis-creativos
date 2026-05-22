@@ -524,11 +524,12 @@ function processFiles(metaText, crmBuf) {
 
   const cc = Object.keys(crmRows[0]);
   const fc2 = (candidates) => cc.find(c => candidates.some(k => c.toLowerCase().includes(k.toLowerCase()))) || null;
-  const CRM_UTM  = fc2(['UTM CONTENT','utm content','utm_content']);
-  const CRM_CAMP = fc2(['UTM CAMPAIGN','utm campaign','utm_campaign']);
-  const CRM_RES  = fc2(['Última Resolución','Resolucion','Resolución','ultima resolucion','status']);
-  const CRM_BASE = fc2(['Bases de datos','base de datos','bases']);
-  const CRM_PROG = fc2(['Programa de Interes','programa de interés','programa']);
+  const CRM_UTM    = fc2(['UTM CONTENT','utm content','utm_content']);
+  const CRM_CAMP   = fc2(['UTM CAMPAIGN','utm campaign','utm_campaign']);
+  const CRM_MEDIUM = fc2(['UTM MEDIUM','utm medium','utm_medium']);
+  const CRM_RES    = fc2(['Última Resolución','Resolucion','Resolución','ultima resolucion','status']);
+  const CRM_BASE   = fc2(['Bases de datos','base de datos','bases']);
+  const CRM_PROG   = fc2(['Programa de Interes','programa de interés','programa']);
 
   const isM = (r) => {
     const res = String(r[CRM_RES]||'').toLowerCase();
@@ -547,10 +548,12 @@ function processFiles(metaText, crmBuf) {
 
   for (const r of crmRows) {
     const utm  = CRM_UTM  ? String(r[CRM_UTM] ||'').trim().replace(/;$/,'').trim() : '';
-    const seg  = CRM_CAMP ? String(r[CRM_CAMP]||'').trim() : '';
-    const base = CRM_BASE ? String(r[CRM_BASE]||'').trim() : '';
-    const prog = CRM_PROG ? String(r[CRM_PROG]||'').trim() : '';
-    const segKey = seg || '(sin UTM campaign)';
+    const seg    = CRM_CAMP   ? String(r[CRM_CAMP]  ||'').trim() : '';
+    const medium = CRM_MEDIUM ? String(r[CRM_MEDIUM]||'').trim() : '';
+    const base   = CRM_BASE   ? String(r[CRM_BASE]  ||'').trim() : '';
+    const prog   = CRM_PROG   ? String(r[CRM_PROG]  ||'').trim() : '';
+    // Si UTM CAMPAIGN está vacío, usar UTM MEDIUM como identificador de origen
+    const segKey = seg || (medium ? `[medium] ${medium}` : '(sin segmentación)');
     if (!byUTM[utm])        byUTM[utm]           = {mat:0, avz:0};
     if (!bySegment[segKey]) bySegment[segKey]     = {segment:segKey, mat:0, avz:0, total:0};
     bySegment[segKey].total++;
