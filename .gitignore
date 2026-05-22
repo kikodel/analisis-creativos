@@ -1,0 +1,26 @@
+# Datos — nunca subir al repo
+*.csv
+*.xlsx
+*.xls
+*.pdf
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Node (si se usa Vercel CLI localmente)
+node_modules/
+.vercel/
+
+# Servidor de desarrollo local — no necesario en producción
+server.js
+
+# Configuración de Claude Code — solo para desarrollo
+.claude/
