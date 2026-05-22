@@ -337,11 +337,39 @@ function pct(a,b) { return b>0 ? +(a/b*100).toFixed(2) : 0; }
 function fmt(n,d=0) { return Number(n).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d}); }
 function delay(ms) { return new Promise(r=>setTimeout(r,ms)); }
 function upd(id,v) { const el=document.getElementById(id); if(el) el.textContent=v; }
+function isEmptyUtm(v) {
+  const c = String(v||'').toLowerCase().replace(/[\s();]/g,'');
+  return !c || c==='notset' || c==='none';
+}
 function normalizeMedium(m) {
+  if (isEmptyUtm(m)) return 'Alta Manual';
   const v = m.toLowerCase().replace(/[\s();]/g,'');
-  if (!v || v==='notset' || v==='none') return 'Alta Manual';
   if (v==='cpc') return 'Search';
   return m;
+}
+// Convierte un UTM CAMPAIGN largo a etiqueta corta legible
+function shortSegLabel(s) {
+  if (!s || isEmptyUtm(s)) return 'Alta Manual';
+  const u = s.toUpperCase().replace(/[-_]/g,' ');
+  if (u.includes('NEUROBRANDING') || u.includes('NEUROMARKETING'))            return 'Neurobranding';
+  if (u.includes('NEUROCIENCIA') && (u.includes('MINDFULNESS')||u.includes('PSICOLOG')||u.includes('POSITIVA'))) return 'Neuroc. Mindfulness';
+  if (u.includes('NEUROCIENCIA') && (u.includes('APLICADA')||u.includes('PRODUCTIVIDAD')||u.includes('PRODUCT'))) return 'Neuroc. Aplicada';
+  if (u.includes('INTELIGENCIA ARTIFICIAL')||u.includes('IA Y NEGOCIOS')||(u.includes('ARTIFICIAL')&&u.includes('NEG'))) return 'IA y Negocios';
+  if ((u.includes('TEA')&&u.includes('TDAH'))||(u.includes('TEA')&&u.includes('INCLUS')))  return 'TEA y TDAH';
+  if (u.includes('SALUD 4')||u.includes('SALUD4'))                             return 'Salud 4.0';
+  if (u.includes('RRHH')||u.includes('RR HH')||(u.includes('RECURSOS')&&u.includes('HUMANOS'))) return 'RRHH e IA';
+  if (u.includes('CUSTOMER')||u.includes('EXPERIENCIA DEL CLIENTE'))           return 'Customer Exp.';
+  if (u.includes('FAMILIA')||(u.includes('ESCUELA')&&u.includes('ACEPTACION')))return 'D. Familia';
+  if (u.includes('CEREBRO CREATIVO'))                                           return 'D. Cerebro Creativo';
+  if (u.includes('NEUROETICA')||u.includes('NEURO ETICA'))                      return 'D. Neuroética';
+  if ((u.includes('ETICA')||u.includes('ÉTICA'))&&(u.includes('DIGITAL')||u.includes('REGULACI')||u.includes('INNOVAC'))) return 'D. Ética Digital';
+  if (u.includes('FUNDAMENTOS')&&(u.includes('IA')||u.includes('INTELIG')))    return 'D. Fund. IA';
+  if (u.includes('NATIVO'))  return 'Tráfico Nativo';
+  if (u==='ALTA MANUAL')     return 'Alta Manual';
+  if (u==='SEARCH')          return 'Search';
+  // Fallback: limpiar prefijos GMP_ y Diplomado__ y guiones
+  return s.replace(/^GMP_Master-en-/i,'').replace(/^GMP_/i,'').replace(/^Diplomado__/i,'D. ')
+           .replace(/-y-/g,' & ').replace(/[-_]/g,' ').slice(0,28);
 }
 
 function xProg(n,c='') {
@@ -558,8 +586,8 @@ function processFiles(metaText, crmBuf) {
     const medium = CRM_MEDIUM ? String(r[CRM_MEDIUM]||'').trim() : '';
     const base   = CRM_BASE   ? String(r[CRM_BASE]  ||'').trim() : '';
     const prog   = CRM_PROG   ? String(r[CRM_PROG]  ||'').trim() : '';
-    // Si UTM CAMPAIGN está vacío, usar UTM MEDIUM normalizado como identificador de origen
-    const segKey = seg || normalizeMedium(medium);
+    // Si UTM CAMPAIGN está vacío o es (not set)/(none), usar UTM MEDIUM normalizado
+    const segKey = (!seg || isEmptyUtm(seg)) ? normalizeMedium(medium) : seg;
     if (!byUTM[utm])        byUTM[utm]           = {mat:0, avz:0};
     if (!bySegment[segKey]) bySegment[segKey]     = {segment:segKey, mat:0, avz:0, total:0};
     bySegment[segKey].total++;
@@ -1038,14 +1066,18 @@ function buildSegmentosSection(d) {
     const conv = s.total>0 ? (s.mat/s.total*100).toFixed(1) : '0.0';
     const rowBg = i===0 ? 'rgba(15,110,86,.05)' : i===1 ? 'rgba(25,69,226,.03)' : i===2 ? 'rgba(184,106,0,.03)' : '';
     const rank = i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1;
-    const nameStyle = i<3 ? 'font-weight:700;color:var(--ink)' : 'color:var(--ink2)';
+    const short = shortSegLabel(s.segment);
+    const showFull = short !== s.segment;
     return `<tr style="background:${rowBg}">
       <td style="text-align:center;font-size:13px;width:42px">${rank}</td>
-      <td style="${nameStyle};font-size:12px">${s.segment}</td>
+      <td style="font-size:12px;${i<3?'font-weight:700;color:var(--ink)':'color:var(--ink2)'}">
+        ${short}
+        ${showFull?`<div style="font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:2px;font-weight:400">${s.segment}</div>`:''}
+      </td>
       <td style="text-align:center;color:var(--green);font-weight:700;font-size:14px">${s.mat}</td>
       <td style="text-align:center;color:var(--blue);font-size:13px">${s.avz}</td>
       <td style="text-align:center;color:var(--ink3);font-family:var(--mono);font-size:11px">${s.total}</td>
-      <td style="text-align:center;color:var(--amber);font-family:var(--mono);font-size:11px">${conv}%</td>
+      <td style="text-align:center;color:${+conv>=5?'var(--green)':+conv>=2?'var(--amber)':'var(--red)'};font-family:var(--mono);font-size:12px;font-weight:600">${conv}%</td>
     </tr>`;
   }).join('');
   return `
@@ -1055,7 +1087,7 @@ function buildSegmentosSection(d) {
       <div style="height:360px"><canvas id="chart5"></canvas></div>
     </div>
     <div class="chart-card">
-      <div class="chart-ttl"><span class="chart-n">6</span>Funnel por segmentación · línea <span style="color:var(--amber)">= % conv</span></div>
+      <div class="chart-ttl"><span class="chart-n">6</span>Matriculados + avanzados por segmento · <span style="color:var(--amber)">% = conv</span> al final de barra</div>
       <div style="height:360px"><canvas id="chart6"></canvas></div>
     </div>
   </div>
@@ -1163,24 +1195,25 @@ function buildC5() {
   const sd = S.data.segmentData
     .slice().sort((a,b) => (b.mat + b.avz) - (a.mat + a.avz))
     .slice(0,12);
-  const labels = sd.map(s => s.segment.length>45 ? s.segment.slice(0,43)+'…' : s.segment);
+  const labels = sd.map(s => shortSegLabel(s.segment));
   S.charts.c5 = new Chart(el, {
     type:'bar',
     data:{labels, datasets:[
-      {label:'Matriculados', data:sd.map(s=>s.mat), backgroundColor:'rgba(15,110,86,.7)', borderRadius:4, stack:'s'},
-      {label:'Avanzados',    data:sd.map(s=>s.avz), backgroundColor:'rgba(25,69,226,.45)', borderRadius:4, stack:'s'},
+      {label:'Matriculados', data:sd.map(s=>s.mat), backgroundColor:'rgba(15,110,86,.75)', borderRadius:{topRight:4,bottomRight:4}, stack:'s'},
+      {label:'Avanzados',    data:sd.map(s=>s.avz), backgroundColor:'rgba(25,69,226,.4)',  borderRadius:{topRight:4,bottomRight:4}, stack:'s'},
     ]},
     options:{indexAxis:'y', responsive:true, maintainAspectRatio:false,
       plugins:{
         legend:{display:true, position:'top', labels:{color:TC, font:{size:11}, boxWidth:12, padding:8}},
         tooltip:{callbacks:{
+          title:(items)=>[sd[items[0].dataIndex].segment],
           label:(ctx)=>ctx.dataset.label+': '+ctx.parsed.x,
-          afterBody:(items)=>{const s=sd[items[0].dataIndex];return['Total funnel: '+(s.mat+s.avz),'Leads CRM: '+s.total];}
+          afterBody:(items)=>{const s=sd[items[0].dataIndex];const conv=s.total>0?(s.mat/s.total*100).toFixed(1):'0';return['Total funnel: '+(s.mat+s.avz),'Leads CRM: '+s.total,'Conv: '+conv+'%'];}
         }}
       },
       scales:{
         x:{beginAtZero:true, grid:GR, ticks:{color:TC, font:{size:11}, stepSize:1}},
-        y:{grid:{display:false}, ticks:{color:TC, font:{size:10}, crossAlign:'far'}}
+        y:{grid:{display:false}, ticks:{color:TC, font:{size:11}, crossAlign:'far'}}
       }
     }
   });
@@ -1190,29 +1223,54 @@ function buildC6() {
   const el = document.getElementById('chart6'); if(!el) return;
   if(S.charts.c6){S.charts.c6.destroy();S.charts.c6=null;}
   if(!S.data?.segmentData?.length) return;
+  // Top 10 por matriculados — horizontal para legibilidad, conv% en tooltip
   const sd = S.data.segmentData
     .slice().sort((a,b) => b.mat - a.mat)
-    .slice(0,12);
-  const labels = sd.map(s => s.segment.length>18 ? s.segment.slice(0,16)+'…' : s.segment);
-  const conv   = sd.map(s => s.total > 0 ? +(s.mat/s.total*100).toFixed(2) : 0);
+    .slice(0,10);
+  const labels = sd.map(s => shortSegLabel(s.segment));
+  // Plugin inline: pinta el % conv en ámbar a la derecha de cada barra
+  const convPlugin = {
+    id:'convBadge',
+    afterDraw(chart) {
+      const ctx2 = chart.ctx;
+      const meta0 = chart.getDatasetMeta(0); // Matriculados
+      const meta1 = chart.getDatasetMeta(1); // Avanzados (stacked end)
+      sd.forEach((s,i) => {
+        const c = s.total>0 ? +(s.mat/s.total*100).toFixed(1) : 0;
+        if (!c) return;
+        // Use the end of the stacked bar (meta1 if avz>0, else meta0)
+        const bar = (s.avz>0 ? meta1 : meta0).data[i];
+        if (!bar) return;
+        const x = bar.x + 5, y = bar.y;
+        ctx2.save();
+        ctx2.font = '600 10px "Space Grotesk",system-ui,sans-serif';
+        ctx2.fillStyle = '#B86A00';
+        ctx2.textBaseline = 'middle';
+        ctx2.fillText(c+'%', x, y);
+        ctx2.restore();
+      });
+    }
+  };
   S.charts.c6 = new Chart(el, {
+    type:'bar',
     data:{labels, datasets:[
-      {type:'bar',  label:'Matriculados', data:sd.map(s=>s.mat), backgroundColor:'rgba(15,110,86,.65)', borderRadius:4, yAxisID:'y'},
-      {type:'bar',  label:'Avanzados',    data:sd.map(s=>s.avz), backgroundColor:'rgba(25,69,226,.4)',  borderRadius:4, yAxisID:'y'},
-      {type:'line', label:'Conv %',       data:conv, borderColor:'#B86A00', backgroundColor:'transparent', tension:.35, pointRadius:5, pointBackgroundColor:'#B86A00', pointBorderColor:'#fff', pointBorderWidth:1.5, yAxisID:'y2', borderDash:[4,3], borderWidth:2},
+      {label:'Matriculados', data:sd.map(s=>s.mat), backgroundColor:'rgba(15,110,86,.75)', borderRadius:3, stack:'s'},
+      {label:'Avanzados',    data:sd.map(s=>s.avz), backgroundColor:'rgba(25,69,226,.4)',  borderRadius:3, stack:'s'},
     ]},
-    options:{responsive:true, maintainAspectRatio:false,
+    plugins:[convPlugin],
+    options:{indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      layout:{padding:{right:46}},
       plugins:{
         legend:{display:true, position:'top', labels:{color:TC, font:{size:11}, boxWidth:12, padding:8}},
         tooltip:{callbacks:{
-          label:(ctx)=>ctx.datasetIndex===2?'Conv: '+ctx.parsed.y.toFixed(2)+'%':ctx.dataset.label+': '+ctx.parsed.y,
-          afterBody:(items)=>{const s=sd[items[0].dataIndex];return['Leads CRM: '+s.total,'Conv: '+(s.total>0?+(s.mat/s.total*100).toFixed(2):0)+'%'];}
+          title:(items)=>[sd[items[0].dataIndex].segment],
+          label:(ctx)=>ctx.dataset.label+': '+ctx.parsed.x,
+          afterBody:(items)=>{const s=sd[items[0].dataIndex];const c=s.total>0?+(s.mat/s.total*100).toFixed(1):0;return['Leads CRM: '+s.total,'Conv: '+c+'%'];}
         }}
       },
       scales:{
-        y:{beginAtZero:true, grid:GR, ticks:{color:TC, font:{size:11}}},
-        y2:{position:'right', beginAtZero:true, grid:{display:false}, ticks:{color:'#B86A00', font:{size:11}, callback:v=>v.toFixed(1)+'%'}},
-        x:{grid:{display:false}, ticks:{color:TC, font:{size:10}, maxRotation:35}}
+        x:{beginAtZero:true, grid:GR, ticks:{color:TC, font:{size:11}, stepSize:1}},
+        y:{grid:{display:false}, ticks:{color:TC, font:{size:11}, crossAlign:'far'}}
       }
     }
   });
