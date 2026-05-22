@@ -337,6 +337,12 @@ function pct(a,b) { return b>0 ? +(a/b*100).toFixed(2) : 0; }
 function fmt(n,d=0) { return Number(n).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d}); }
 function delay(ms) { return new Promise(r=>setTimeout(r,ms)); }
 function upd(id,v) { const el=document.getElementById(id); if(el) el.textContent=v; }
+function normalizeMedium(m) {
+  const v = m.toLowerCase().replace(/[\s();]/g,'');
+  if (!v || v==='notset' || v==='none') return 'Alta Manual';
+  if (v==='cpc') return 'Search';
+  return m;
+}
 
 function xProg(n,c='') {
   const s = (String(n||'') + ' ' + String(c||'')).toUpperCase();
@@ -552,8 +558,8 @@ function processFiles(metaText, crmBuf) {
     const medium = CRM_MEDIUM ? String(r[CRM_MEDIUM]||'').trim() : '';
     const base   = CRM_BASE   ? String(r[CRM_BASE]  ||'').trim() : '';
     const prog   = CRM_PROG   ? String(r[CRM_PROG]  ||'').trim() : '';
-    // Si UTM CAMPAIGN está vacío, usar UTM MEDIUM como identificador de origen
-    const segKey = seg || (medium ? `[medium] ${medium}` : '(sin segmentación)');
+    // Si UTM CAMPAIGN está vacío, usar UTM MEDIUM normalizado como identificador de origen
+    const segKey = seg || normalizeMedium(medium);
     if (!byUTM[utm])        byUTM[utm]           = {mat:0, avz:0};
     if (!bySegment[segKey]) bySegment[segKey]     = {segment:segKey, mat:0, avz:0, total:0};
     bySegment[segKey].total++;
@@ -661,6 +667,7 @@ function renderUpload() {
   const tk = [...ticker,...ticker].map(t=>`<span class="t">${t}</span><span class="d">◆</span>`).join('');
   const sections = [
     {i:'📊',t:'Resumen',   d:'Métricas, gráficos y CPL'},
+    {i:'🎯',t:'Segmentos', d:'Análisis por adset/UTM'},
     {i:'🖼', t:'Creativos', d:'Galería con miniaturas PDF'},
     {i:'📋',t:'Tabla',     d:'Datos completos'},
     {i:'💡',t:'Recomend.', d:'Plan de acción'},
@@ -790,6 +797,7 @@ function renderDashboard() {
 
     <div class="tabs">
       <div class="tab active" data-tab="resumen"         onclick="switchTab('resumen')">Resumen</div>
+      <div class="tab"        data-tab="segmentos"       onclick="switchTab('segmentos')">Segmentos</div>
       <div class="tab"        data-tab="creativos"       onclick="switchTab('creativos')">Creativos</div>
       <div class="tab"        data-tab="tabla"           onclick="switchTab('tabla')">Tabla</div>
       <div class="tab"        data-tab="recomendaciones" onclick="switchTab('recomendaciones')">Recomendaciones</div>
@@ -797,6 +805,7 @@ function renderDashboard() {
 
     <div>
       <div id="sec-resumen"         class="sec active">${buildResumen(d)}</div>
+      <div id="sec-segmentos"       class="sec">${buildSegmentosSection(d)}</div>
       <div id="sec-creativos"       class="sec">${buildCreativosSection(d)}</div>
       <div id="sec-tabla"           class="sec">${buildTablaSection(d)}</div>
       <div id="sec-recomendaciones" class="sec">${buildRecSection(d)}</div>
@@ -810,6 +819,7 @@ function switchTab(id) {
   S.tab = id;
   document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab===id));
   document.querySelectorAll('.sec').forEach(s => s.classList.toggle('active', s.id==='sec-'+id));
+  if (id === 'segmentos') { buildC5(); buildC6(); }
 }
 window.switchTab = switchTab;
 
@@ -891,6 +901,11 @@ function refreshDynamic() {
   const tb = document.getElementById('dt-body'); if(tb) tb.innerHTML=buildTableRows();
   // Rec
   const rg = document.getElementById('rec-inner'); if(rg) rg.innerHTML=buildRecInner();
+  // Segmentos (tabla ranking — los charts se rebuildan en buildCharts)
+  const sg = document.getElementById('seg-table-body'); if(sg) {
+    const ranked=S.data.segmentData.slice().sort((a,b)=>(b.mat+b.avz)-(a.mat+a.avz));
+    sg.innerHTML=ranked.map((s,i)=>{const conv=s.total>0?(s.mat/s.total*100).toFixed(1):'0.0';const rank=i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1;return`<tr><td style="text-align:center;font-size:13px">${rank}</td><td style="font-size:12px;${i<3?'font-weight:700;color:var(--ink)':'color:var(--ink2)'}">${s.segment}</td><td style="text-align:center;color:var(--green);font-weight:700">${s.mat}</td><td style="text-align:center;color:var(--blue)">${s.avz}</td><td style="text-align:center;color:var(--ink3);font-family:var(--mono);font-size:11px">${s.total}</td><td style="text-align:center;color:var(--amber);font-family:var(--mono);font-size:11px">${conv}%</td></tr>`;}).join('');
+  }
 }
 
 function setCF(f) { S.fStat=f; const el=document.getElementById('c-grid'); if(el) el.innerHTML=buildCards(); const cb=document.getElementById('c-filter-bar'); if(cb) cb.innerHTML=buildCFilterBar(); }
@@ -928,11 +943,7 @@ function buildResumen(d) {
     <div class="chart-card"><div class="chart-ttl"><span class="chart-n">3</span>Distribución (${d.totalMat} matriculados)</div><div style="height:190px"><canvas id="chart3"></canvas></div></div>
     <div class="chart-card"><div class="chart-ttl"><span class="chart-n">4</span>Top creativos · <span style="color:var(--green)">verde</span>=matriculados</div><div style="height:190px"><canvas id="chart4"></canvas></div></div>
   </div>
-  <div class="insights" id="ins-inner">${buildInsights()}</div>
-  <div class="charts2" style="margin-top:16px">
-    <div class="chart-card"><div class="chart-ttl"><span class="chart-n">5</span>Top segmentaciones · <span style="color:var(--green)">matriculados</span> + <span style="color:var(--blue)">avanzados</span></div><div style="height:260px"><canvas id="chart5"></canvas></div></div>
-    <div class="chart-card"><div class="chart-ttl"><span class="chart-n">6</span>Funnel por segmentación · avanzados → matriculados</div><div style="height:260px"><canvas id="chart6"></canvas></div></div>
-  </div>`;
+  <div class="insights" id="ins-inner">${buildInsights()}</div>`;
 }
 
 function buildInsights() {
@@ -1017,9 +1028,55 @@ function buildRecInner() {
   <div class="rcard"><div class="rt" style="color:var(--blue)">4. Mejoras estructurales</div><div class="rb"><b>Tracking:</b> ${Math.max(0,d.totalMat-d.totalMatUTM)} de ${d.totalMat} matriculados sin UTM. Agregar Ad ID de Meta como campo oculto en el form de captación.<br><br><b>UTMs:</b> Eliminar el punto y coma al final que rompe el match entre Meta y CRM.<br><br><b>Videos:</b> Usar como retargeting sobre visitantes, no como prospección fría.</div></div>`;
 }
 
+function buildSegmentosSection(d) {
+  const sd = d.segmentData;
+  if (!sd || !sd.length) {
+    return `<div style="padding:64px;text-align:center;color:var(--ink3);font-family:var(--mono);font-size:13px">Sin datos de segmentación.<br>Asegurate de que el CRM tenga columna <b>UTM CAMPAIGN</b> o <b>UTM MEDIUM</b>.</div>`;
+  }
+  const ranked = sd.slice().sort((a,b) => (b.mat+b.avz)-(a.mat+a.avz));
+  const rows = ranked.map((s,i) => {
+    const conv = s.total>0 ? (s.mat/s.total*100).toFixed(1) : '0.0';
+    const rowBg = i===0 ? 'rgba(15,110,86,.05)' : i===1 ? 'rgba(25,69,226,.03)' : i===2 ? 'rgba(184,106,0,.03)' : '';
+    const rank = i===0?'🥇':i===1?'🥈':i===2?'🥉':i+1;
+    const nameStyle = i<3 ? 'font-weight:700;color:var(--ink)' : 'color:var(--ink2)';
+    return `<tr style="background:${rowBg}">
+      <td style="text-align:center;font-size:13px;width:42px">${rank}</td>
+      <td style="${nameStyle};font-size:12px">${s.segment}</td>
+      <td style="text-align:center;color:var(--green);font-weight:700;font-size:14px">${s.mat}</td>
+      <td style="text-align:center;color:var(--blue);font-size:13px">${s.avz}</td>
+      <td style="text-align:center;color:var(--ink3);font-family:var(--mono);font-size:11px">${s.total}</td>
+      <td style="text-align:center;color:var(--amber);font-family:var(--mono);font-size:11px">${conv}%</td>
+    </tr>`;
+  }).join('');
+  return `
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:16px">
+    <div class="chart-card">
+      <div class="chart-ttl"><span class="chart-n">5</span>Top segmentaciones · <span style="color:var(--green)">matriculados</span> + <span style="color:var(--blue)">avanzados</span></div>
+      <div style="height:360px"><canvas id="chart5"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-ttl"><span class="chart-n">6</span>Funnel por segmentación · línea <span style="color:var(--amber)">= % conv</span></div>
+      <div style="height:360px"><canvas id="chart6"></canvas></div>
+    </div>
+  </div>
+  <div class="tw">
+    <table class="dt">
+      <thead><tr>
+        <th style="text-align:center">#</th>
+        <th>Segmentación (UTM CAMPAIGN / MEDIUM)</th>
+        <th style="text-align:center">Matriculados</th>
+        <th style="text-align:center">Avanzados</th>
+        <th style="text-align:center">Leads CRM</th>
+        <th style="text-align:center">Conv %</th>
+      </tr></thead>
+      <tbody id="seg-table-body">${rows}</tbody>
+    </table>
+  </div>`;
+}
+
 // ── CHARTS ───────────────────────────────────────────────────────────────
 function destroyAll() { ['c1','c2','c3','c4','c5','c6'].forEach(k=>{if(S.charts[k]){S.charts[k].destroy();S.charts[k]=null;}}); }
-function buildCharts() { if(!S.data) return; buildC1(); buildC2(); buildC3(); buildC4(); buildC5(); buildC6(); }
+function buildCharts() { if(!S.data) return; buildC1(); buildC2(); buildC3(); buildC4(); if(S.tab==='segmentos'){buildC5();buildC6();} }
 const GR = {color:'rgba(10,10,9,.06)'}, TC = '#7A7A72';
 
 function buildC1() {
@@ -1105,25 +1162,25 @@ function buildC5() {
   if(!S.data?.segmentData?.length) return;
   const sd = S.data.segmentData
     .slice().sort((a,b) => (b.mat + b.avz) - (a.mat + a.avz))
-    .slice(0,10);
-  const labels = sd.map(s => s.segment.slice(0,32));
+    .slice(0,12);
+  const labels = sd.map(s => s.segment.length>45 ? s.segment.slice(0,43)+'…' : s.segment);
   S.charts.c5 = new Chart(el, {
     type:'bar',
     data:{labels, datasets:[
-      {label:'Matriculados', data:sd.map(s=>s.mat), backgroundColor:'rgba(15,110,86,.65)', borderRadius:4, stack:'s'},
-      {label:'Avanzados',    data:sd.map(s=>s.avz), backgroundColor:'rgba(25,69,226,.4)',  borderRadius:4, stack:'s'},
+      {label:'Matriculados', data:sd.map(s=>s.mat), backgroundColor:'rgba(15,110,86,.7)', borderRadius:4, stack:'s'},
+      {label:'Avanzados',    data:sd.map(s=>s.avz), backgroundColor:'rgba(25,69,226,.45)', borderRadius:4, stack:'s'},
     ]},
     options:{indexAxis:'y', responsive:true, maintainAspectRatio:false,
       plugins:{
-        legend:{display:true, position:'top', labels:{color:TC, font:{size:10}, boxWidth:10, padding:6}},
+        legend:{display:true, position:'top', labels:{color:TC, font:{size:11}, boxWidth:12, padding:8}},
         tooltip:{callbacks:{
           label:(ctx)=>ctx.dataset.label+': '+ctx.parsed.x,
           afterBody:(items)=>{const s=sd[items[0].dataIndex];return['Total funnel: '+(s.mat+s.avz),'Leads CRM: '+s.total];}
         }}
       },
       scales:{
-        x:{beginAtZero:true, grid:GR, ticks:{color:TC, font:{size:10}, stepSize:1}},
-        y:{grid:{display:false}, ticks:{color:TC, font:{size:9}}}
+        x:{beginAtZero:true, grid:GR, ticks:{color:TC, font:{size:11}, stepSize:1}},
+        y:{grid:{display:false}, ticks:{color:TC, font:{size:10}, crossAlign:'far'}}
       }
     }
   });
@@ -1135,27 +1192,27 @@ function buildC6() {
   if(!S.data?.segmentData?.length) return;
   const sd = S.data.segmentData
     .slice().sort((a,b) => b.mat - a.mat)
-    .slice(0,10);
-  const labels = sd.map(s => s.segment.slice(0,32));
+    .slice(0,12);
+  const labels = sd.map(s => s.segment.length>18 ? s.segment.slice(0,16)+'…' : s.segment);
   const conv   = sd.map(s => s.total > 0 ? +(s.mat/s.total*100).toFixed(2) : 0);
   S.charts.c6 = new Chart(el, {
     data:{labels, datasets:[
-      {type:'bar',  label:'Matriculados', data:sd.map(s=>s.mat), backgroundColor:'rgba(15,110,86,.6)',  borderRadius:4, yAxisID:'y'},
-      {type:'bar',  label:'Avanzados',    data:sd.map(s=>s.avz), backgroundColor:'rgba(25,69,226,.35)', borderRadius:4, yAxisID:'y'},
-      {type:'line', label:'Conv %',       data:conv, borderColor:'#B86A00', backgroundColor:'transparent', tension:.3, pointRadius:4, pointBackgroundColor:'#B86A00', yAxisID:'y2', borderDash:[3,2]},
+      {type:'bar',  label:'Matriculados', data:sd.map(s=>s.mat), backgroundColor:'rgba(15,110,86,.65)', borderRadius:4, yAxisID:'y'},
+      {type:'bar',  label:'Avanzados',    data:sd.map(s=>s.avz), backgroundColor:'rgba(25,69,226,.4)',  borderRadius:4, yAxisID:'y'},
+      {type:'line', label:'Conv %',       data:conv, borderColor:'#B86A00', backgroundColor:'transparent', tension:.35, pointRadius:5, pointBackgroundColor:'#B86A00', pointBorderColor:'#fff', pointBorderWidth:1.5, yAxisID:'y2', borderDash:[4,3], borderWidth:2},
     ]},
     options:{responsive:true, maintainAspectRatio:false,
       plugins:{
-        legend:{display:true, position:'top', labels:{color:TC, font:{size:10}, boxWidth:10, padding:5}},
+        legend:{display:true, position:'top', labels:{color:TC, font:{size:11}, boxWidth:12, padding:8}},
         tooltip:{callbacks:{
           label:(ctx)=>ctx.datasetIndex===2?'Conv: '+ctx.parsed.y.toFixed(2)+'%':ctx.dataset.label+': '+ctx.parsed.y,
           afterBody:(items)=>{const s=sd[items[0].dataIndex];return['Leads CRM: '+s.total,'Conv: '+(s.total>0?+(s.mat/s.total*100).toFixed(2):0)+'%'];}
         }}
       },
       scales:{
-        y:{beginAtZero:true, grid:GR, ticks:{color:TC, font:{size:10}}},
-        y2:{position:'right', beginAtZero:true, grid:{display:false}, ticks:{color:'#B86A00', font:{size:10}, callback:v=>v.toFixed(1)+'%'}},
-        x:{grid:{display:false}, ticks:{color:TC, font:{size:9}, maxRotation:25}}
+        y:{beginAtZero:true, grid:GR, ticks:{color:TC, font:{size:11}}},
+        y2:{position:'right', beginAtZero:true, grid:{display:false}, ticks:{color:'#B86A00', font:{size:11}, callback:v=>v.toFixed(1)+'%'}},
+        x:{grid:{display:false}, ticks:{color:TC, font:{size:10}, maxRotation:35}}
       }
     }
   });
