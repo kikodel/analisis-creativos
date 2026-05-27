@@ -354,6 +354,7 @@ function processFiles(brlText, usdText, crmBuf) {
     const COL_ID    = fc('Identificador del anuncio','ad id');
     const COL_SET   = fc('Nombre del conjunto','ad set name','conjunto de anuncios');
     const COL_LEADS = fc('Resultados','results');
+    const COL_TYPE  = fc('Tipo de resultado','result type','tipo de resultado');
     const COL_BRL   = fc('Importe gastado (BRL)','gastado (brl)','(brl)');
     const COL_USD   = fc('Importe gastado (USD)','gastado (usd)','(usd)');
     const COL_SPEND = COL_BRL || COL_USD;
@@ -361,9 +362,30 @@ function processFiles(brlText, usdText, crmBuf) {
 
     if (!COL_AD || !COL_LEADS) return;
 
+    // Tipos de resultado que NO son leads (impresiones, alcance, clics, views…)
+    const isNonLeadType = (t) => {
+      const v = String(t||'').toLowerCase();
+      return v.includes('impresi') || v.includes('alcance') || v.includes('reproducci') ||
+             v.includes('visualiz') || v.includes('interacci') || v.includes('clic') ||
+             v.includes('click')    || v.includes('mensaje')  || v.includes('engagement') ||
+             v.includes('reach')    || v.includes('impression') || v.includes('view');
+    };
+
+    // Anuncios de ANAHUAC (Estudioso / Desbravador / Ambicioso / Especialista)
+    // que están en la misma cuenta pero NO pertenecen al análisis UEES
+    const isAnahuacAd = (name) => {
+      const u = name.toUpperCase();
+      return u.includes('ESTUDIOSO') || u.includes('DESBRAVADOR') ||
+             u.includes('AMBICIOSO') || u.includes('ESPECIALISTA');
+    };
+
     for (const r of rows) {
       const ad = String(r[COL_AD]||'').trim();
       if (!ad || ad==='nan' || ad==='Nombre del anuncio') continue;
+      // Excluir anuncios de ANAHUAC mezclados en la cuenta
+      if (isAnahuacAd(ad)) continue;
+      // Excluir filas con tipo de resultado no-lead (impresiones, alcance, etc.)
+      if (COL_TYPE && isNonLeadType(r[COL_TYPE])) continue;
       const id    = COL_ID  ? String(r[COL_ID]  ||'').trim() : '';
       const adset = COL_SET ? String(r[COL_SET]  ||'').trim() : '';
       const leads = cn(r[COL_LEADS]);
@@ -422,6 +444,7 @@ function processFiles(brlText, usdText, crmBuf) {
 
   // ── [5] Recorrer CRM y cruzar con Meta ────────────────────────────────
   const byAd       = {};  // adName → {mat, avz, progs:{progKey:count}}
+  const crmAdSeen  = new Set(); // todos los ad-names que aparecen en CRM (con UTM)
   const bySegment  = {};
   let   totalMat   = 0;
   const matByProg  = {};
@@ -442,6 +465,8 @@ function processFiles(brlText, usdText, crmBuf) {
     } else if (utmCont && /^\d+$/.test(utmCont) && metaById[utmCont]) {
       adKey = metaById[utmCont];
     }
+    // Registrar que este ad tiene presencia en CRM (tiene UTM)
+    if (adKey) crmAdSeen.add(adKey);
 
     // Segmento
     const segKey = (!seg || isEmptyUtm(seg)) ? normalizeMedium(medium) : seg;
@@ -473,8 +498,10 @@ function processFiles(brlText, usdText, crmBuf) {
 
   const segmentData = Object.values(bySegment).filter(s => s.mat>0 || s.avz>0);
 
-  // ── [6] Construir creativos ───────────────────────────────────────────
-  const creatives = Object.values(metaByAd).map(({ad, id, adset, leads, spendUsd}) => {
+  // ── [6] Construir creativos (solo los que tienen UTM en CRM) ─────────
+  const creatives = Object.values(metaByAd)
+    .filter(({ad}) => crmAdSeen.has(ad))   // ← SOLO datos con UTM
+    .map(({ad, id, adset, leads, spendUsd}) => {
     const l   = Math.round(leads);
     const cpu = l>0 ? +(spendUsd/l).toFixed(2) : 0;
     const crm = byAd[ad] || {mat:0, avz:0, progs:{}};
