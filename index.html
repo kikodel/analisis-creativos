@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ANÁHUAC Ads Analytics — NODS</title>
+<title>Analítica de Creativos — Performance</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
@@ -294,20 +294,39 @@ function detectPerfilFromText(text) {
 
 // ── Metadata ─────────────────────────────────────────────────────────────
 const PROG_META = [
-  {key:'IA_Neg',       label:'IA y Negocios',        color:'#2471A3'},
-  {key:'Neuroc_Mind',  label:'Neuroc. Mindfulness',   color:'#1A8A5A'},
-  {key:'Neuroc_Apl',   label:'Neuroc. Aplicada',      color:'#B05C0A'},
-  {key:'Salud',        label:'Salud 4.0',              color:'#0E7A6E'},
-  {key:'Neurobranding',label:'Neurobranding',          color:'#9B2335'},
-  {key:'TEA_TDAH',     label:'TEA y TDAH',             color:'#6B3FA0'},
-  {key:'RRHH',         label:'RRHH e IA',              color:'#2C3E50'},
-  {key:'CX',           label:'Customer Exp.',          color:'#A84300'},
-  {key:'D_Fund_IA',    label:'Fundamentos IA',         color:'#1945E2'},
-  {key:'D_Familia',    label:'Familia y Escuela',      color:'#7B3FA0'},
-  {key:'D_Cerebro',    label:'Cerebro Creativo',       color:'#156341'},
-  {key:'D_Neuro',      label:'Neuroética',             color:'#8B6200'},
-  {key:'D_Etica',      label:'Ética Digital',          color:'#5B2D8A'},
-  {key:'D_Innov',      label:'Innovación Salud',       color:'#0A6B5E'},
+  // GMP / Masters
+  {key:'IA_Neg',        label:'IA y Negocios',          color:'#2471A3'},
+  {key:'Neuroc_Mind',   label:'Neuroc. Mindfulness',    color:'#1A8A5A'},
+  {key:'Neuroc_Apl',    label:'Neuroc. Aplicada',       color:'#B05C0A'},
+  {key:'Neuroc_Lid',    label:'Neuroc. Liderazgo',      color:'#0D6B3A'},
+  {key:'Salud',         label:'Salud 4.0',               color:'#0E7A6E'},
+  {key:'Salud_Mental',  label:'Salud Mental',           color:'#1A7A6E'},
+  {key:'Neurobranding', label:'Neurobranding',          color:'#9B2335'},
+  {key:'TEA_TDAH',      label:'TEA y TDAH',             color:'#6B3FA0'},
+  {key:'RRHH',          label:'RRHH e IA',              color:'#2C3E50'},
+  {key:'CX',            label:'Customer Exp.',          color:'#A84300'},
+  {key:'Trans_Energ',   label:'Transición Energética',  color:'#2E7D32'},
+  {key:'Geopolitica',   label:'Geopolítica',            color:'#1A237E'},
+  {key:'Derecho',       label:'Derecho Digital',        color:'#4A148C'},
+  {key:'Riesgos',       label:'Riesgos y Compliance',   color:'#37474F'},
+  {key:'Com_Digital',   label:'Com. Digital',           color:'#00695C'},
+  {key:'TCC',           label:'Terapia Cognitiva',      color:'#558B2F'},
+  {key:'IA_Mkt',        label:'IA y Marketing',         color:'#1565C0'},
+  {key:'IA_Salud',      label:'IA y Salud',             color:'#00838F'},
+  {key:'Neuroc_Cons',   label:'Neuroc. Consumidor',     color:'#6A1B9A'},
+  // Diplomados
+  {key:'D_Fund_IA',     label:'D. Fundamentos IA',      color:'#1945E2'},
+  {key:'D_Familia',     label:'D. Familia y Escuela',   color:'#7B3FA0'},
+  {key:'D_Cerebro',     label:'D. Cerebro Creativo',    color:'#156341'},
+  {key:'D_Neuro',       label:'D. Neuroética',          color:'#8B6200'},
+  {key:'D_Etica',       label:'D. Ética Digital',       color:'#5B2D8A'},
+  {key:'D_Innov',       label:'D. Innovación Salud',    color:'#0A6B5E'},
+  {key:'D_Resiliencia', label:'D. Resiliencia',         color:'#2E7D32'},
+  {key:'D_Gov_IA',      label:'D. Gobernanza IA',       color:'#0D47A1'},
+  {key:'D_Neuroc_Neg',  label:'D. Neuroc. Negocios',    color:'#4E342E'},
+  {key:'D_Riesgos',     label:'D. Riesgos',             color:'#37474F'},
+  {key:'D_Sostenib',    label:'D. Sostenibilidad',      color:'#1B5E20'},
+  {key:'D_Gen',         label:'D. General',             color:'#455A64'},
 ];
 function pi(key) { return PROG_META.find(p=>p.key===key) || {key,label:key||'?',color:CFG.RATE?'#1945E2':'#666'}; }
 
@@ -373,24 +392,46 @@ function shortSegLabel(s) {
 }
 
 function xProg(n,c='') {
-  const s = (String(n||'') + ' ' + String(c||'')).toUpperCase();
-  if (s.includes('DIPLOMADO')) {
-    if (s.includes('FUNDAMENTOS')) return 'D_Fund_IA';
-    if (s.includes('FAMILIA') || s.includes('NEURODIVERG') || s.includes('CRECIMIENTO')) return 'D_Familia';
-    if (s.includes('CEREBRO')) return 'D_Cerebro';
-    if (s.includes('NEUROETICA') || s.includes('NEUROÉTICA')) return 'D_Neuro';
-    if (s.includes('REGULACI')) return 'D_Etica';
-    if (s.includes('INNOVACI')) return 'D_Innov';
-    return 'Otro';
+  const s = (String(n||'') + ' ' + String(c||'')).toUpperCase().replace(/[-_]/g,' ');
+  // ── Diplomados (detectar primero para no confundir con GMP) ────────────────
+  if (s.includes('DIPLOMADO') || s.includes('PLACA FIJA')) {
+    if (s.includes('FUNDAMENTOS') && (s.includes('IA') || s.includes('INTELIGENCIA'))) return 'D_Fund_IA';
+    if (s.includes('GOBERNANZA') && (s.includes('IA') || s.includes('INTELIGENCIA'))) return 'D_Gov_IA';
+    if (s.includes('FAMILIA') || (s.includes('ESCUELA') && s.includes('NEURO'))) return 'D_Familia';
+    if (s.includes('CEREBRO') && s.includes('CREATIVO')) return 'D_Cerebro';
+    if (s.includes('NEUROETICA') || s.includes('NEURO ETICA') || s.includes('NEUROETICA')) return 'D_Neuro';
+    if (s.includes('ETICA') && (s.includes('DIGITAL') || s.includes('REGULACION') || s.includes('PRIVACIDAD'))) return 'D_Etica';
+    if (s.includes('INNOVACION') && s.includes('SALUD')) return 'D_Innov';
+    if (s.includes('RESILIENCIA') || s.includes('BIENESTAR')) return 'D_Resiliencia';
+    if (s.includes('NEUROCIENCIA') && (s.includes('LIDERAZGO') || s.includes('NEGOCIOS') || s.includes('CONSUMIDOR'))) return 'D_Neuroc_Neg';
+    if (s.includes('RIESGO') || s.includes('COMPLIANCE') || s.includes('CUMPLIMIENTO') || s.includes('INTEGRIDAD')) return 'D_Riesgos';
+    if (s.includes('SOSTENIB') || s.includes('ENERGETICA') || s.includes('BIODIVERSIDAD')) return 'D_Sostenib';
+    if (s.includes('AREA DERECHO') || s.includes('AREA GESTION') || s.includes('AREA INNOVACION') ||
+        s.includes('AREA SALUD') || s.includes('AREA URBANISMO')) return 'D_Gen';
+    return 'D_Gen';
   }
-  if (s.includes('NEUROBRANDING')) return 'Neurobranding';
-  if (s.includes('MINDFULNESS') || s.includes('PSICOLOG') || s.includes('CLINICAL')) return 'Neuroc_Mind';
-  if (s.includes('APLICADA') || s.includes('PRUDUCTIVIDAD') || s.includes('PRODUCTIVIDAD')) return 'Neuroc_Apl';
-  if (s.includes('IA_Y') || (s.includes('INTELIGENCIA') && s.includes('ARTIF'))) return 'IA_Neg';
-  if (s.includes('TEA') || s.includes('TDAH')) return 'TEA_TDAH';
+  // ── GMP / Masters ──────────────────────────────────────────────────────────
+  if (s.includes('NEUROBRANDING') || s.includes('NEUROMARKETING')) return 'Neurobranding';
+  if (s.includes('NEUROCIENCIA') && (s.includes('MINDFULNESS') || s.includes('PSICOLOG') || s.includes('POSITIVA') || s.includes('CLINICAL'))) return 'Neuroc_Mind';
+  if (s.includes('NEUROCIENCIA') && (s.includes('APLICADA') || s.includes('PRODUCTIVIDAD') || s.includes('RENDIMIENTO') || s.includes('PRUDUCTIVIDAD'))) return 'Neuroc_Apl';
+  if (s.includes('NEUROCIENCIA') && (s.includes('LIDERAZGO') || s.includes('NEGOCIOS'))) return 'Neuroc_Lid';
+  if (s.includes('NEUROCIENCIA') && s.includes('CONSUMIDOR')) return 'Neuroc_Cons';
+  if (s.includes('TEA') || s.includes('TDAH') || s.includes('NEURODIVERSIDAD') || s.includes('INCLUSION')) return 'TEA_TDAH';
+  if ((s.includes('INTELIGENCIA') && s.includes('ARTIF')) || s.includes('INTELIGENCIA ARTIFICIAL Y NEGOCIOS') || s.includes('IA Y NEGOCIOS')) return 'IA_Neg';
+  if (s.includes('IA') && s.includes('MARKETING')) return 'IA_Mkt';
+  if (s.includes('IA') && s.includes('SALUD')) return 'IA_Salud';
+  if (s.includes('IA') && (s.includes('RR HH') || s.includes('RRHH') || s.includes('TALENTO') || s.includes('PERSONAS'))) return 'RRHH';
+  if (s.includes('TRANSICION ENERGETICA') || s.includes('ENERGIA')) return 'Trans_Energ';
+  if (s.includes('GEOPOLITICA') || s.includes('GEOPOLÍTICA') || s.includes('DINAMICA GLOBAL')) return 'Geopolitica';
+  if (s.includes('DERECHO') || s.includes('COMPLIANCE') || s.includes('JURIDICO')) return 'Derecho';
+  if (s.includes('RIESGO') || s.includes('GESTION DE RIESGOS')) return 'Riesgos';
+  if (s.includes('CUSTOMER') || s.includes('EXPERIENCIA DEL CLIENTE') || s.includes('CX')) return 'CX';
+  if (s.includes('COMUNICACION DIGITAL') || s.includes('BRANDING') || s.includes('STORYTELLING')) return 'Com_Digital';
+  if (s.includes('TERAPIA') || s.includes('TCC') || s.includes('COGNITIVO CONDUCTUAL')) return 'TCC';
+  if (s.includes('SALUD MENTAL') || s.includes('SALUD 4') || s.includes('SALUD EMOCIONAL') || s.includes('PSICOLOGIA')) return 'Salud_Mental';
   if (s.includes('SALUD')) return 'Salud';
-  if (s.includes('RR_HH') || s.includes('RRHH')) return 'RRHH';
-  if (s.includes('CUSTOMER')) return 'CX';
+  if (s.includes('RR HH') || s.includes('RRHH') || s.includes('RECURSOS HUMANOS')) return 'RRHH';
+  if (s.includes('CRISIS') || s.includes('GESTION DE CRISIS')) return 'Riesgos';
   return 'Otro';
 }
 function xPerf(n) {
@@ -620,8 +661,8 @@ function processFiles(metaText, crmBuf) {
       cpl_usd: cpu, cpl_brl: +(l>0?spend/l:0).toFixed(2),
       avanzados: crm.avz, matriculados: crm.mat,
       conv: pct(crm.mat, l),
-      isMasters: /GMP|Master/i.test(camp),
-      isDipl:    /Diplomado/i.test(camp),
+      isMasters: /GMP|Master/i.test(camp) && !/Diplomado/i.test(camp),
+      isDipl:    /Diplomado|DIPLOMADO/i.test(camp),
       status:    xStatus(cpu, crm.mat, l),
     };
   }).filter(c => c.leads>0 || c.matriculados>0);
@@ -691,7 +732,7 @@ window.startAnalysis = startAnalysis;
 // ── UPLOAD SCREEN ─────────────────────────────────────────────────────────
 function renderUpload() {
   const {meta,crm,pdf} = S.files;
-  const ticker = ['META ADS','CRM','MATRICULADOS','CREATIVOS','LEADS','CONVERSIÓN','CPL USD','ESTUDIOSO','ESPECIALISTA','AMBICIOSO','DESBRAVADOR','GMP MASTERS','DIPLOMADOS','NODS'];
+  const ticker = ['META ADS','CRM','MATRICULADOS','CREATIVOS','LEADS','CONVERSIÓN','CPL USD','ESTUDIOSO','ESPECIALISTA','AMBICIOSO','DESBRAVADOR','MASTERS','DIPLOMADOS','PERFORMANCE'];
   const tk = [...ticker,...ticker].map(t=>`<span class="t">${t}</span><span class="d">◆</span>`).join('');
   const sections = [
     {i:'📊',t:'Resumen',   d:'Métricas, gráficos y CPL'},
@@ -705,8 +746,8 @@ function renderUpload() {
   <div class="cv-root">
     <div class="cv-orb"></div><div class="cv-grid"></div><div class="cv-noise"></div>
     <div class="cv-ticker"><div class="cv-ticker-track">${tk}</div></div>
-    <div class="cv-brand">NODS <em>Analytics</em><div class="cv-brand-sep"></div><span style="color:var(--ink3);font-weight:400;letter-spacing:.1em">ANÁHUAC</span></div>
-    <div class="cv-stamp"><div class="cv-dot"></div><span>2026</span><span style="color:var(--line2)">·</span><span>Mayo</span></div>
+    <div class="cv-brand">Creativos <em>Performance</em><div class="cv-brand-sep"></div><span style="color:var(--ink3);font-weight:400;letter-spacing:.1em">Analytics</span></div>
+    <div class="cv-stamp"><div class="cv-dot"></div><span>2026</span><span style="color:var(--line2)">·</span><span>Performance</span></div>
     <div class="cv-globe">
       <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:100%">
         <g fill="none" stroke="#1945E2" stroke-width=".8">
@@ -718,8 +759,8 @@ function renderUpload() {
     </div>
     <div class="cv-cover">
       <div class="cv-content">
-        <div class="cv-eyebrow">Global Minds · Ads Analytics · v3</div>
-        <h1 class="cv-h1">Análisis de<br><em>Creativos</em><br>ANÁHUAC</h1>
+        <div class="cv-eyebrow">Ads Analytics · Performance · v3</div>
+        <h1 class="cv-h1">Análisis de<br><em>Creativos</em><br>Performance</h1>
         <p class="cv-lead">Cruzá el reporte de Meta Ads con el CRM de matriculados. CPL, conversiones y recomendaciones en segundos — todo corre en tu navegador.</p>
         <div class="cv-stabs">
           ${sections.map(s=>`<div class="cv-stab"><div class="cv-stab-ico">${s.i}</div><strong>${s.t}</strong><span>${s.d}</span></div>`).join('')}
@@ -798,7 +839,7 @@ function renderDashboard() {
   document.getElementById('app').innerHTML = `
   <div class="dash">
     <div class="dh">
-      <div class="dh-brand">NODS Analytics <span style="color:var(--ink3);font-size:10px;font-weight:400;letter-spacing:.1em">ANÁHUAC</span></div>
+      <div class="dh-brand">Creativos <span style="color:var(--blue)">Performance</span> <span style="color:var(--ink3);font-size:10px;font-weight:400;letter-spacing:.1em">Analytics</span></div>
       <div class="dh-right">
         <span class="dbadge">${fmt(d.totalLeads)} leads</span>
         <span class="dbadge g">${d.totalMat} matriculados</span>
@@ -813,7 +854,7 @@ function renderDashboard() {
       <div class="gf-sec">
         <span class="gf-lbl">Tipo</span>
         <button class="gfb on-all" id="gft-todos"       onclick="setFType('todos')">Todos</button>
-        <button class="gfb"        id="gft-masters"     onclick="setFType('masters')">Masters GMP</button>
+        <button class="gfb"        id="gft-masters"     onclick="setFType('masters')">Masters</button>
         <button class="gfb"        id="gft-diplomados"  onclick="setFType('diplomados')">Diplomados</button>
       </div>
       <div class="gf-sec">
