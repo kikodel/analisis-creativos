@@ -690,9 +690,9 @@ function processFiles(metaText, crmBuf) {
     };
   }).filter(c => c.leads>0 || c.matriculados>0);
 
-  const mc     = creatives.filter(c => c.isMasters);
-  const tLeads = mc.reduce((s,c)=>s+c.leads,0);
-  const tSpend = mc.reduce((s,c)=>s+c.spend_usd,0);
+  // Totales: todos los creativos (Masters + Diplomados)
+  const tLeads = creatives.reduce((s,c)=>s+c.leads,0);
+  const tSpend = creatives.reduce((s,c)=>s+c.spend_usd,0);
 
   // Agregar por adset
   const adsetMap = {};
