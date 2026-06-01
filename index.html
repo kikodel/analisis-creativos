@@ -337,7 +337,7 @@ const STATUS = {
   warn: {lbl:'⚠ Revisar',     bg:'rgba(10,10,9,.07)',    fg:'#5A5A52'},
   bad:  {lbl:'✕ Pausar',      bg:'rgba(214,59,47,.1)',   fg:'#B03028'},
 };
-const PERFILES = ['Estudioso','Especialista','Ambicioso','Desbravador','Video IA','Video','Imagen'];
+const PERFILES = ['Estudioso','Especialista','Ambicioso','Desbravador','Global Mind','Video IA','Video','Imagen'];
 
 // ── Helpers ──────────────────────────────────────────────────────────────
 // FIXED: parseFloat() directly — Meta CSV uses dot as decimal (e.g. '5820.1')
@@ -452,10 +452,11 @@ function xPerf(n) {
   // Normalizar: underscores y guiones → espacio, para que \b funcione bien
   const s = raw.replace(/[-_]/g,' ');
   // ── Perfil de audiencia (case-insensitive) ────────────────────────────────
-  if (/desbravador/i.test(s))   return 'Desbravador';
-  if (/especialista/i.test(s))  return 'Especialista';
-  if (/ambicioso/i.test(s))     return 'Ambicioso';
-  if (/estudioso/i.test(s))     return 'Estudioso';
+  if (/desbravador/i.test(s))          return 'Desbravador';
+  if (/especialista/i.test(s))         return 'Especialista';
+  if (/ambicioso/i.test(s))            return 'Ambicioso';
+  if (/estudioso/i.test(s))            return 'Estudioso';
+  if (/global[\s_]?mind/i.test(s))     return 'Global Mind';
   // ── Tipo de creativo desde nomenclatura del nombre de anuncio ─────────────
   // VIDEO IA antes que VIDEO para no cortocircuitar
   if (/\bVIDEO\s*IA\b/i.test(s))     return 'Video IA';
