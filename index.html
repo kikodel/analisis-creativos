@@ -1319,6 +1319,7 @@ function buildC7() {
   const labels = sorted.map(([k])=>k);
   const data   = sorted.map(([,v])=>v.mat);
   const cpls   = sorted.map(([,v])=>v.leads>0 ? v.spend/v.leads : 0);
+  const convs  = sorted.map(([,v])=>v.leads>0 ? (v.mat/v.leads*100) : 0);
   const total  = data.reduce((s,v)=>s+v,0);
 
   const palette = ['#1945E2','#0F6E56','#9B2335','#B05C0A','#6B3FA0','#1A8A5A',
@@ -1349,7 +1350,7 @@ function buildC7() {
             boxWidth: 14,
             padding: 10,
             generateLabels: () => labels.map((lbl,i) => ({
-              text: `${lbl}  ·  ${data[i]} matr.  ·  $${cpls[i].toFixed(2)} CPL`,
+              text: `${lbl}  ·  ${data[i]} matr.  ·  $${cpls[i].toFixed(2)} CPL  ·  ${convs[i].toFixed(1)}% conv.`,
               fillStyle: colors[i] + 'CC',
               strokeStyle: colors[i],
               lineWidth: 2,
@@ -1364,8 +1365,9 @@ function buildC7() {
               const i   = ctx.dataIndex;
               const pct = ((ctx.parsed / total) * 100).toFixed(1);
               return [
-                `  ${ctx.parsed} matriculados  (${pct}%)`,
+                `  ${ctx.parsed} matriculados  (${pct}% del total)`,
                 `  CPL promedio: $${cpls[i].toFixed(2)} USD`,
+                `  Conversión: ${convs[i].toFixed(1)}%`,
               ];
             }
           }
