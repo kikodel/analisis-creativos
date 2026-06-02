@@ -452,7 +452,7 @@ function xPerf(n) {
   // Normalizar: underscores y guiones → espacio, para que \b funcione bien
   const s = raw.replace(/[-_]/g,' ');
   // ── Perfil de audiencia (case-insensitive) ────────────────────────────────
-  if (/desbravador/i.test(s))          return 'Desbravador';
+  if (/desbrav[a-z]{0,5}dor/i.test(s)) return 'Desbravador';
   if (/especialista/i.test(s))         return 'Especialista';
   if (/ambicioso/i.test(s))            return 'Ambicioso';
   if (/estudioso/i.test(s))            return 'Estudioso';
