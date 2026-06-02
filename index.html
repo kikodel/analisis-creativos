@@ -1305,16 +1305,20 @@ function buildC7() {
   const el = document.getElementById('chart7'); if(!el) return;
   if(S.charts.c7){S.charts.c7.destroy();S.charts.c7=null;}
 
-  // Agrupar matriculados por tipo de creativo (perf)
+  // Agrupar matriculados + leads + gasto por tipo de creativo (perf)
   const g = {};
   filtered().forEach(c => {
-    if(c.matriculados > 0) g[c.perf] = (g[c.perf]||0) + c.matriculados;
+    if(!g[c.perf]) g[c.perf] = {mat:0, leads:0, spend:0};
+    g[c.perf].mat   += c.matriculados;
+    g[c.perf].leads += c.leads;
+    g[c.perf].spend += c.spend_usd;
   });
-  const sorted = Object.entries(g).sort((a,b)=>b[1]-a[1]);
+  const sorted = Object.entries(g).filter(([,v])=>v.mat>0).sort((a,b)=>b[1].mat-a[1].mat);
   if(!sorted.length) return;
 
   const labels = sorted.map(([k])=>k);
-  const data   = sorted.map(([,v])=>v);
+  const data   = sorted.map(([,v])=>v.mat);
+  const cpls   = sorted.map(([,v])=>v.leads>0 ? v.spend/v.leads : 0);
   const total  = data.reduce((s,v)=>s+v,0);
 
   const palette = ['#1945E2','#0F6E56','#9B2335','#B05C0A','#6B3FA0','#1A8A5A',
@@ -1345,7 +1349,7 @@ function buildC7() {
             boxWidth: 14,
             padding: 10,
             generateLabels: () => labels.map((lbl,i) => ({
-              text: `${lbl}  ·  ${data[i]}`,
+              text: `${lbl}  ·  ${data[i]} matr.  ·  $${cpls[i].toFixed(2)} CPL`,
               fillStyle: colors[i] + 'CC',
               strokeStyle: colors[i],
               lineWidth: 2,
@@ -1357,8 +1361,12 @@ function buildC7() {
         tooltip: {
           callbacks: {
             label: (ctx) => {
+              const i   = ctx.dataIndex;
               const pct = ((ctx.parsed / total) * 100).toFixed(1);
-              return `  ${ctx.parsed} matriculados  (${pct}%)`;
+              return [
+                `  ${ctx.parsed} matriculados  (${pct}%)`,
+                `  CPL promedio: $${cpls[i].toFixed(2)} USD`,
+              ];
             }
           }
         }
