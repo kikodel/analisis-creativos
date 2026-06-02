@@ -639,11 +639,12 @@ function processFiles(metaText, crmBuf) {
     return res.includes('analizando') || res.includes('proceso de pago');
   };
 
+  const ALTA_MANUAL = '__ALTA_MANUAL__';
   const byUTM = {};
   const bySegment = {};   // agrupado por UTM CAMPAIGN (segmentación)
   const matByProg = {};
   const matByBase = {Masters:0, Diplomados:0};
-  let totalMat = 0;
+  let totalMat = 0, totalMatAM = 0;
 
   for (const r of crmRows) {
     const utm  = CRM_UTM  ? String(r[CRM_UTM] ||'').trim().replace(/;$/,'').trim() : '';
@@ -651,21 +652,28 @@ function processFiles(metaText, crmBuf) {
     const medium = CRM_MEDIUM ? String(r[CRM_MEDIUM]||'').trim() : '';
     const base   = CRM_BASE   ? String(r[CRM_BASE]  ||'').trim() : '';
     const prog   = CRM_PROG   ? String(r[CRM_PROG]  ||'').trim() : '';
+
+    // Si no tiene UTM CONTENT válido → Alta Manual (no se atribuye a ningún anuncio)
+    const utmKey = (utm && !isEmptyUtm(utm)) ? utm : ALTA_MANUAL;
+
     // Si UTM CAMPAIGN está vacío o es (not set)/(none), usar UTM MEDIUM normalizado
     const segKey = (!seg || isEmptyUtm(seg)) ? normalizeMedium(medium) : seg;
-    if (!byUTM[utm])        byUTM[utm]           = {mat:0, avz:0};
+
+    if (!byUTM[utmKey])     byUTM[utmKey]        = {mat:0, avz:0};
     if (!bySegment[segKey]) bySegment[segKey]     = {segment:segKey, mat:0, avz:0, total:0};
     bySegment[segKey].total++;
+
     if (isM(r)) {
-      byUTM[utm].mat++;
+      byUTM[utmKey].mat++;
       bySegment[segKey].mat++;
       totalMat++;
+      if (utmKey === ALTA_MANUAL) totalMatAM++;
       const pk = xProg(prog, base);
       matByProg[pk] = (matByProg[pk]||0) + 1;
       if (/master/i.test(base))         matByBase.Masters++;
       else if (/diplomado/i.test(base)) matByBase.Diplomados++;
     } else if (isA(r)) {
-      byUTM[utm].avz++;
+      byUTM[utmKey].avz++;
       bySegment[segKey].avz++;
     }
   }
@@ -678,6 +686,9 @@ function processFiles(metaText, crmBuf) {
     const crm = byUTM[ad] || {mat:0, avz:0};
     const prog = xProg(ad, camp);
     const perf = xPerf(ad);
+    // Masters = prog clasificado como no-Diplomado | Diplomados = prog D_ o keyword en nombre/campaña
+    const isDiplFlag = prog.startsWith('D_') || /diplomado/i.test(ad + ' ' + camp);
+    const isMastersFlag = !isDiplFlag;
     return {
       ad, camp, adset: adset||camp, prog, perf,
       leads: l,
@@ -685,8 +696,8 @@ function processFiles(metaText, crmBuf) {
       cpl_usd: cpu, cpl_brl: +(l>0?spend/l:0).toFixed(2),
       avanzados: crm.avz, matriculados: crm.mat,
       conv: pct(crm.mat, l),
-      isMasters: /GMP|Master/i.test(camp) && !/Diplomado/i.test(camp),
-      isDipl:    /Diplomado|DIPLOMADO/i.test(camp),
+      isMasters: isMastersFlag,
+      isDipl:    isDiplFlag,
       status:    xStatus(cpu, crm.mat, l),
     };
   }).filter(c => c.leads>0 || c.matriculados>0);
@@ -708,7 +719,7 @@ function processFiles(metaText, crmBuf) {
   const adsetData = Object.values(adsetMap);
 
   return {
-    creatives, matByProg, matByBase, totalMat, segmentData,
+    creatives, matByProg, matByBase, totalMat, totalMatAM, segmentData,
     totalMatUTM: creatives.reduce((s,c)=>s+c.matriculados,0),
     totalLeads: tLeads, totalSpend: +tSpend.toFixed(2),
   };
@@ -958,15 +969,16 @@ window.setFType=setFType; window.setFPerf=setFPerf; window.setProg=setProg;
 
 function getMetrics() {
   const d = S.data; const fc = filtered();
+  const amLabel = d.totalMatAM > 0 ? ` · Alta Manual: ${d.totalMatAM}` : '';
   if (S.prog==='todos' && S.fType==='todos' && S.fPerf==='todos') {
     return {leads:d.totalLeads, spend:d.totalSpend, cpl:d.totalLeads>0?d.totalSpend/d.totalLeads:0,
-      mat:d.totalMat, mat_sub:`Masters: ${d.matByBase.Masters||0} · Diplomados: ${d.matByBase.Diplomados||0}`};
+      mat:d.totalMat, mat_sub:`Masters: ${d.matByBase.Masters||0} · Diplomados: ${d.matByBase.Diplomados||0}${amLabel}`};
   }
   const leads=fc.reduce((s,c)=>s+c.leads,0);
   const spend=fc.reduce((s,c)=>s+c.spend_usd,0);
   const mat=fc.reduce((s,c)=>s+c.matriculados,0);
   const total=S.prog!=='todos'?(d.matByProg[S.prog]||mat):mat;
-  return {leads, spend, cpl:leads>0?spend/leads:0, mat:total, mat_sub:`${mat} con UTM · filtro activo`};
+  return {leads, spend, cpl:leads>0?spend/leads:0, mat:total, mat_sub:`${mat} con UTM${amLabel} · filtro activo`};
 }
 
 function refreshDynamic() {
@@ -1044,7 +1056,7 @@ function buildInsights() {
   ${lowCPL?`<div class="ins b"><div class="ins-t">◎ Más eficiente</div><div class="ins-b"><span class="pill pb2">${pi(lowCPL.prog).label} · ${lowCPL.perf}</span><br><br>CPL <b>$${lowCPL.cpl_usd.toFixed(2)} USD</b>, ${lowCPL.matriculados} matriculados.</div></div>`:''}
   ${topConv?`<div class="ins a"><div class="ins-t">↑ Mayor conversión</div><div class="ins-b"><span class="pill pa">${pi(topConv.prog).label} · ${topConv.perf}</span><br><br><b>${topConv.conv.toFixed(2)}% conv.</b> con ${topConv.leads} leads. Candidato para escalar.</div></div>`:''}
   ${pause?`<div class="ins r"><div class="ins-t">✕ Pausar</div><div class="ins-b"><span class="pill pr">${pi(pause.prog).label} · ${pause.perf}</span><br><br>CPL <b>$${pause.cpl_usd.toFixed(2)} USD</b>, 0 matriculados.</div></div>`:''}
-  <div class="ins b"><div class="ins-t">◉ Tracking</div><div class="ins-b"><span class="pill pb2">${d.totalMat} totales</span><br><br>${d.totalMatUTM} con UTM · ${Math.max(0,d.totalMat-d.totalMatUTM)} sin UTM en CRM.</div></div>
+  <div class="ins b"><div class="ins-t">◉ Tracking</div><div class="ins-b"><span class="pill pb2">${d.totalMat} totales</span><span class="pill pa">${d.totalMatAM||0} Alta Manual</span><br><br>${d.totalMatUTM} atribuidos a Meta · ${d.totalMatAM||0} sin UTM (Alta Manual) · ${Math.max(0,d.totalMat-d.totalMatUTM-(d.totalMatAM||0))} UTM no matcheado.</div></div>
   <div class="ins g"><div class="ins-t">📊 Mix</div><div class="ins-b"><span class="pill pg">${fc.filter(c=>c.status==='top').length} top</span><span class="pill pb2">${fc.filter(c=>c.status==='ok').length} ok</span><span class="pill pa">${fc.filter(c=>c.status==='opp').length} opp</span><span class="pill pr">${fc.filter(c=>c.status==='bad').length} pausar</span><br><br>${fc.length} creativos con filtros activos.</div></div>`;
 }
 
