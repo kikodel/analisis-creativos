@@ -426,7 +426,9 @@ function xProg(n,c='') {
   if (s.includes('CUSTOMER') || s.includes('EXPERIENCIA DEL CLIENTE') || s.includes('CX')) return 'CX';
   if (s.includes('COMUNICACION DIGITAL') || s.includes('BRANDING') || s.includes('STORYTELLING')) return 'Com_Digital';
   if (s.includes('TERAPIA') || s.includes('TCC') || s.includes('COGNITIVO CONDUCTUAL')) return 'TCC';
-  if (s.includes('SALUD MENTAL') || s.includes('SALUD EMOCIONAL') || s.includes('DESARROLLO') && s.includes('SALUD')) return 'Salud_Mental';
+  // "Salud Mental 4.0" en nomenclatura = programa Salud 4.0
+  if (/SALUD[\s_]?MENTAL[\s_]?4/i.test(s)) return 'Salud';
+  if (s.includes('SALUD MENTAL') || s.includes('SALUD EMOCIONAL') || (s.includes('DESARROLLO') && s.includes('SALUD'))) return 'Salud_Mental';
   if (s.includes('SALUD')) return 'Salud';
   if (s.includes('RR HH') || s.includes('RRHH') || s.includes('RECURSOS HUMANOS')) return 'RRHH';
   if (s.includes('CRISIS') || s.includes('GESTION DE CRISIS')) return 'Riesgos';
