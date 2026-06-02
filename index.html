@@ -300,7 +300,7 @@ const PROG_META = [
   {key:'Neuroc_Apl',    label:'Neuroc. Aplicada',       color:'#B05C0A'},
   {key:'Neuroc_Lid',    label:'Neuroc. Liderazgo',      color:'#0D6B3A'},
   {key:'Salud',         label:'Salud 4.0',               color:'#0E7A6E'},
-  {key:'Salud_Mental',  label:'Salud Mental 4.0',        color:'#1A7A6E'},
+  {key:'Salud_Mental',  label:'Salud Mental y Desarrollo', color:'#1A7A6E'},
   {key:'Neurobranding', label:'Neurobranding',          color:'#9B2335'},
   {key:'TEA_TDAH',      label:'TEA y TDAH',             color:'#6B3FA0'},
   {key:'RRHH',          label:'RRHH e IA',              color:'#2C3E50'},
@@ -426,9 +426,8 @@ function xProg(n,c='') {
   if (s.includes('CUSTOMER') || s.includes('EXPERIENCIA DEL CLIENTE') || s.includes('CX')) return 'CX';
   if (s.includes('COMUNICACION DIGITAL') || s.includes('BRANDING') || s.includes('STORYTELLING')) return 'Com_Digital';
   if (s.includes('TERAPIA') || s.includes('TCC') || s.includes('COGNITIVO CONDUCTUAL')) return 'TCC';
-  if (s.includes('SALUD MENTAL') || s.includes('SALUD EMOCIONAL') || s.includes('PSICOLOGIA') || /SALUD[\s_]?MENTAL[\s_]?4/i.test(s)) return 'Salud_Mental';
-  if (s.includes('SALUD 4') || s.includes('SALUD4')) return 'Salud';
-  if (s.includes('SALUD')) return 'Salud_Mental';
+  if (s.includes('SALUD MENTAL') || s.includes('SALUD EMOCIONAL') || s.includes('DESARROLLO') && s.includes('SALUD')) return 'Salud_Mental';
+  if (s.includes('SALUD')) return 'Salud';
   if (s.includes('RR HH') || s.includes('RRHH') || s.includes('RECURSOS HUMANOS')) return 'RRHH';
   if (s.includes('CRISIS') || s.includes('GESTION DE CRISIS')) return 'Riesgos';
   // ── Catch-all amplio: evitar "Otro" en lo posible ──────────────────────────
