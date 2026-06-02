@@ -1042,7 +1042,7 @@ function buildResumen(d) {
     <div class="chart-card"><div class="chart-ttl"><span class="chart-n">4</span>Top creativos · <span style="color:var(--green)">verde</span>=matriculados · hover=nombre técnico</div><div style="height:240px"><canvas id="chart4"></canvas></div></div>
   </div>
   <div class="charts2" style="grid-template-columns:1fr">
-    <div class="chart-card"><div class="chart-ttl"><span class="chart-n">7</span>Creativos con más matriculados — participación %</div><div style="height:280px"><canvas id="chart7"></canvas></div></div>
+    <div class="chart-card"><div class="chart-ttl"><span class="chart-n">7</span>Matriculados por tipo de creativo</div><div style="height:280px"><canvas id="chart7"></canvas></div></div>
   </div>
   <div class="insights" id="ins-inner">${buildInsights()}</div>`;
 }
@@ -1304,21 +1304,22 @@ function adsetFiltered() {
 function buildC7() {
   const el = document.getElementById('chart7'); if(!el) return;
   if(S.charts.c7){S.charts.c7.destroy();S.charts.c7=null;}
-  const fc = filtered().filter(c=>c.matriculados>0).sort((a,b)=>b.matriculados-a.matriculados).slice(0,12);
-  if(!fc.length) return;
 
-  const total = fc.reduce((s,c)=>s+c.matriculados,0);
-  const labels = fc.map(c => {
-    const prog = pi(c.prog).label;
-    // Etiqueta: "Perfil · Prog (abrev)"
-    const short = prog.length > 16 ? prog.slice(0,14)+'…' : prog;
-    return `${c.perf} · ${short}`;
+  // Agrupar matriculados por tipo de creativo (perf)
+  const g = {};
+  filtered().forEach(c => {
+    if(c.matriculados > 0) g[c.perf] = (g[c.perf]||0) + c.matriculados;
   });
-  const data   = fc.map(c=>c.matriculados);
-  // Paleta: colores de programa si está en PROG_META, sino rotación de azules/verdes
-  const palette = ['#1945E2','#0F6E56','#B05C0A','#6B3FA0','#9B2335','#1A8A5A',
-                   '#2471A3','#A84300','#8B6200','#558B2F','#00695C','#1565C0'];
-  const colors  = fc.map((c,i) => pi(c.prog).color || palette[i % palette.length]);
+  const sorted = Object.entries(g).sort((a,b)=>b[1]-a[1]);
+  if(!sorted.length) return;
+
+  const labels = sorted.map(([k])=>k);
+  const data   = sorted.map(([,v])=>v);
+  const total  = data.reduce((s,v)=>s+v,0);
+
+  const palette = ['#1945E2','#0F6E56','#9B2335','#B05C0A','#6B3FA0','#1A8A5A',
+                   '#2471A3','#A84300','#558B2F','#00695C','#8B6200','#4A148C'];
+  const colors  = labels.map((_,i) => palette[i % palette.length]);
 
   S.charts.c7 = new Chart(el, {
     type: 'pie',
@@ -1326,10 +1327,10 @@ function buildC7() {
       labels,
       datasets: [{
         data,
-        backgroundColor: colors.map(c => c + 'CC'),  // 80% opacidad
-        borderColor:     colors,
+        backgroundColor: colors.map(c => c + 'CC'),
+        borderColor: colors,
         borderWidth: 2,
-        hoverOffset: 8,
+        hoverOffset: 10,
       }]
     },
     options: {
@@ -1340,29 +1341,25 @@ function buildC7() {
           position: 'right',
           labels: {
             color: TC,
-            font: { size: 11, family: "'Space Grotesk', sans-serif" },
-            boxWidth: 13,
-            padding: 9,
-            generateLabels: (chart) => {
-              return chart.data.labels.map((lbl, i) => ({
-                text: `${lbl}  (${data[i]})`,
-                fillStyle: colors[i] + 'CC',
-                strokeStyle: colors[i],
-                lineWidth: 2,
-                index: i,
-                hidden: false,
-              }));
-            }
+            font: { size: 12, family: "'Space Grotesk', sans-serif" },
+            boxWidth: 14,
+            padding: 10,
+            generateLabels: () => labels.map((lbl,i) => ({
+              text: `${lbl}  ·  ${data[i]}`,
+              fillStyle: colors[i] + 'CC',
+              strokeStyle: colors[i],
+              lineWidth: 2,
+              index: i,
+              hidden: false,
+            }))
           }
         },
         tooltip: {
           callbacks: {
             label: (ctx) => {
-              const v = ctx.parsed;
-              const pct = ((v / total) * 100).toFixed(1);
-              return `  ${v} matriculados  (${pct}%)`;
-            },
-            title: (items) => fc[items[0].dataIndex].ad.replace(/[-_]/g,' ').slice(0,48),
+              const pct = ((ctx.parsed / total) * 100).toFixed(1);
+              return `  ${ctx.parsed} matriculados  (${pct}%)`;
+            }
           }
         }
       }
